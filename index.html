@@ -1,30 +1,352 @@
 <!DOCTYPE html>
-<html>
+<html lang="zh-Hant">
 <head>
-    <meta charset="UTF-8">
-    <title>Daily updates</title>
-    <style>
-        .name{
-            color: red;
-            text-align: center;
-        }
-        .CON{
-            color: rgb(0, 255, 38);
-            text-align: center;
-        }
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>待辦清單 To‑Do List</title>
+  <meta name="description" content="輕量、可離線、支援拖曳排序與本機儲存的待辦清單。" />
+  <style>
+    :root {
+      --bg: #0b0f14;
+      --panel: #121820;
+      --panel-2: #0f141b;
+      --text: #e8eef6;
+      --muted: #a6b3c2;
+      --brand: #7dd3fc; /* sky-300 */
+      --ok: #86efac;    /* green-300 */
+      --warn: #fca5a5;  /* red-300 */
+      --shadow: 0 10px 30px rgba(0,0,0,.35);
+      --radius: 18px;
+    }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      margin: 0; font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, "Noto Sans", "Apple Color Emoji", "Segoe UI Emoji";
+      background: radial-gradient(1200px 800px at 80% -20%, #132032, transparent 60%), var(--bg);
+      color: var(--text);
+      display: grid; place-items: center; padding: 24px;
+    }
+    .app {
+      width: min(900px, 92vw); background: linear-gradient(180deg, var(--panel), var(--panel-2));
+      border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden;
+    }
+    header {
+      padding: 22px 22px 0; display: grid; gap: 14px;
+    }
+    .title-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+    h1 { margin: 0; font-size: clamp(20px, 3.5vw, 32px); letter-spacing: .3px; }
+    .stats { font-size: 13px; color: var(--muted); }
 
-        .Normal{
-            color: rgb(0, 0, 0);
-            text-align: center;
-        }
-    </style>
+    form.add {
+      display: grid; grid-template-columns: 1fr auto; gap: 10px; padding-bottom: 16px;
+    }
+    .input, .btn {
+      border: 1px solid #1e293b; background: #0c121a; color: var(--text);
+      padding: 12px 14px; border-radius: 14px; outline: none;
+    }
+    .input:focus { border-color: #334155; box-shadow: 0 0 0 3px rgba(125,211,252,.15); }
+    .btn { cursor: pointer; font-weight: 600; letter-spacing: .2px; }
+    .btn.primary { background: linear-gradient(180deg, #0ea5e9 0%, #0284c7 100%); border: none; }
+    .btn.ghost { background: transparent; border-color: #243244; color: var(--muted); }
+    .btn:disabled { opacity: .5; cursor: not-allowed; }
+
+    .toolbar {
+      display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 12px 22px; border-top: 1px solid #1e293b; border-bottom: 1px solid #1e293b; background: #0b121a88; backdrop-filter: blur(4px);
+    }
+    .toolbar .seg { display: inline-flex; border: 1px solid #1e293b; border-radius: 12px; overflow: hidden; }
+    .toolbar .seg button { background: transparent; border: none; color: var(--muted); padding: 8px 12px; cursor: pointer; }
+    .toolbar .seg button[aria-pressed="true"] { color: var(--text); background: #172131; }
+    .toolbar .spacer { flex: 1; }
+
+    ul.list { list-style: none; margin: 0; padding: 6px 8px 14px; max-height: 62vh; overflow: auto; }
+    .empty { color: var(--muted); text-align: center; padding: 28px 10px; }
+
+    .item { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 10px; margin: 8px 0; padding: 10px 12px; border: 1px solid #1e293b; background: #0c121a; border-radius: 14px; box-shadow: 0 1px 0 #0b1016 inset; }
+    .handle { cursor: grab; user-select: none; padding: 6px; border-radius: 10px; opacity: .7; }
+    .handle:active { cursor: grabbing; }
+    .checkbox { width: 20px; height: 20px; accent-color: #22c55e; }
+    .label { line-height: 1.4; padding: 8px 10px; border-radius: 10px; }
+    .label[contenteditable="true"] { outline: 2px solid #1e293b; background: #0b1118; }
+    .done .label { color: #94a3b8; text-decoration: line-through; }
+
+    .actions { display: inline-flex; gap: 6px; }
+    .icon-btn { border: 1px solid #1e293b; background: #0b1118; color: var(--muted); padding: 6px 8px; border-radius: 10px; cursor: pointer; }
+    .icon-btn:hover { color: var(--text); background: #131c29; }
+
+    footer { display: flex; gap: 10px; align-items: center; justify-content: space-between; padding: 12px 22px 20px; color: var(--muted); font-size: 13px; }
+    .link { color: var(--brand); text-decoration: none; }
+    .link:hover { text-decoration: underline; }
+  </style>
 </head>
 <body>
-    <h1 class="name">Daily updates</h1><br>
-    <h1 class="name">Daily random tasks</h1><br>
-    <h1 class="CON">py problem 6</h1><br>
-    <h1 class="CON">Problem : sward、gun、movingPart、Roblox Tycoon</h1><br>
-    <h2 class="Normal">Observation Expert → predict next step → If wrong, think about the reasons → Correct your thinking patterns → study speed up</h2>
+  <main class="app" aria-label="待辦清單應用">
+    <header>
+      <div class="title-row">
+        <h1>待辦清單 To‑Do</h1>
+        <div class="stats" id="stats">—</div>
+      </div>
+      <form class="add" id="add-form" autocomplete="off">
+        <input id="new-task" class="input" name="task" type="text" placeholder="輸入新待辦事項，按 Enter 新增…" aria-label="新增待辦" />
+        <button class="btn primary" type="submit" aria-label="新增">新增</button>
+      </form>
+    </header>
 
+    <div class="toolbar" role="toolbar" aria-label="篩選與操作">
+      <div class="seg" role="group" aria-label="顯示篩選">
+        <button data-filter="all" aria-pressed="true">全部</button>
+        <button data-filter="active" aria-pressed="false">進行中</button>
+        <button data-filter="completed" aria-pressed="false">已完成</button>
+      </div>
+      <div class="spacer"></div>
+      <input id="search" class="input" type="search" placeholder="搜尋…" aria-label="搜尋待辦" style="max-width:260px"/>
+      <button id="clear-completed" class="btn ghost" title="清除已完成">清除已完成</button>
+      <button id="export-json" class="btn ghost" title="匯出 JSON">匯出</button>
+      <button id="import-json" class="btn ghost" title="匯入 JSON">匯入</button>
+      <input id="import-file" type="file" accept="application/json" hidden />
+    </div>
+
+    <ul id="list" class="list" aria-live="polite"></ul>
+
+    <div id="empty" class="empty" hidden>目前沒有待辦事項，快新增一個吧！</div>
+
+    <footer>
+      <div>本機自動儲存 • 支援拖曳排序、雙擊編輯、鍵盤操作</div>
+      <a class="link" href="https://github.com/" target="_blank" rel="noreferrer">在 GitHub Pages 部署</a>
+    </footer>
+  </main>
+
+  <script>
+    // === Utilities ===
+    const $ = (sel, el=document) => el.querySelector(sel);
+    const $$ = (sel, el=document) => Array.from(el.querySelectorAll(sel));
+    const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,8);
+
+    // === State ===
+    const STORE_KEY = 'ghpages.todo.v1';
+    let state = {
+      items: [],              // {id, text, done}
+      filter: 'all',          // 'all' | 'active' | 'completed'
+      search: ''
+    };
+
+    function save() { localStorage.setItem(STORE_KEY, JSON.stringify(state)); }
+    function load() {
+      try { const raw = localStorage.getItem(STORE_KEY); if (raw) state = JSON.parse(raw); }
+      catch (e) { console.warn('Load failed', e); }
+      finally { render(); }
+    }
+
+    // === DOM refs ===
+    const listEl = $('#list');
+    const emptyEl = $('#empty');
+    const statsEl = $('#stats');
+
+    // === Rendering ===
+    function render() {
+      const filtered = state.items.filter(it => {
+        if (state.filter === 'active' && it.done) return false;
+        if (state.filter === 'completed' && !it.done) return false;
+        if (state.search && !it.text.toLowerCase().includes(state.search)) return false;
+        return true;
+      });
+
+      listEl.innerHTML = '';
+      if (filtered.length === 0) {
+        emptyEl.hidden = false;
+      } else {
+        emptyEl.hidden = true;
+      }
+
+      for (const item of filtered) {
+        const li = document.createElement('li');
+        li.className = 'item' + (item.done ? ' done' : '');
+        li.draggable = true;
+        li.dataset.id = item.id;
+
+        // Drag handle
+        const handle = document.createElement('span');
+        handle.className = 'handle';
+        handle.title = '拖曳排序';
+        handle.innerHTML = '⋮⋮';
+
+        // Checkbox
+        const cb = document.createElement('input');
+        cb.type = 'checkbox'; cb.className = 'checkbox'; cb.checked = item.done;
+        cb.setAttribute('aria-label', '完成切換');
+        cb.addEventListener('change', () => toggleDone(item.id));
+
+        // Label (editable)
+        const label = document.createElement('span');
+        label.className = 'label'; label.textContent = item.text; label.tabIndex = 0;
+        label.addEventListener('dblclick', () => startEdit(label, item));
+        label.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter') { e.preventDefault(); startEdit(label, item); }
+        });
+
+        // Actions
+        const actions = document.createElement('div');
+        actions.className = 'actions';
+
+        const editBtn = btn('✏️', '編輯', () => startEdit(label, item));
+        const delBtn = btn('🗑️', '刪除', () => remove(item.id));
+        actions.append(editBtn, delBtn);
+
+        li.append(handle, cb, label, actions);
+        listEl.append(li);
+      }
+
+      // stats
+      const total = state.items.length;
+      const completed = state.items.filter(i => i.done).length;
+      const active = total - completed;
+      statsEl.textContent = `全部 ${total} · 進行中 ${active} · 已完成 ${completed}`;
+
+      // enable drag events after DOM built
+      enableDrag();
+      save();
+    }
+
+    function btn(text, title, onClick) {
+      const b = document.createElement('button');
+      b.className = 'icon-btn'; b.textContent = text; b.title = title; b.type = 'button';
+      b.addEventListener('click', onClick);
+      return b;
+    }
+
+    function startEdit(labelEl, item) {
+      labelEl.setAttribute('contenteditable', 'true');
+      labelEl.focus();
+      placeCaretAtEnd(labelEl);
+
+      const finish = () => {
+        labelEl.removeAttribute('contenteditable');
+        const val = labelEl.textContent.trim();
+        if (!val) { labelEl.textContent = item.text; return; }
+        item.text = val; render();
+      };
+      const keyHandler = (e) => {
+        if (e.key === 'Enter') { e.preventDefault(); finish(); }
+        if (e.key === 'Escape') { labelEl.textContent = item.text; labelEl.blur(); }
+      }
+      labelEl.addEventListener('blur', finish, { once: true });
+      labelEl.addEventListener('keydown', keyHandler, { once: true });
+    }
+
+    function placeCaretAtEnd(el) {
+      const range = document.createRange();
+      range.selectNodeContents(el);
+      range.collapse(false);
+      const sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(range);
+    }
+
+    function add(text) {
+      const t = text.trim();
+      if (!t) return;
+      state.items.unshift({ id: uid(), text: t, done: false });
+      $('#new-task').value = '';
+      render();
+    }
+
+    function toggleDone(id) {
+      const it = state.items.find(i => i.id === id);
+      if (it) { it.done = !it.done; render(); }
+    }
+
+    function remove(id) {
+      state.items = state.items.filter(i => i.id !== id);
+      render();
+    }
+
+    function clearCompleted() {
+      state.items = state.items.filter(i => !i.done);
+      render();
+    }
+
+    // drag & drop ordering
+    function enableDrag() {
+      $$(".item", listEl).forEach(li => {
+        li.addEventListener('dragstart', (e) => {
+          e.dataTransfer.effectAllowed = 'move';
+          e.dataTransfer.setData('text/plain', li.dataset.id);
+          li.style.opacity = .5;
+        });
+        li.addEventListener('dragend', () => li.style.opacity = '');
+        li.addEventListener('dragover', (e) => e.preventDefault());
+        li.addEventListener('drop', (e) => {
+          e.preventDefault();
+          const draggedId = e.dataTransfer.getData('text/plain');
+          const targetId = li.dataset.id;
+          if (draggedId && draggedId !== targetId) reorder(draggedId, targetId);
+        });
+      });
+    }
+
+    function reorder(fromId, toId) {
+      const fromIdx = state.items.findIndex(i => i.id === fromId);
+      const toIdx = state.items.findIndex(i => i.id === toId);
+      if (fromIdx < 0 || toIdx < 0) return;
+      const [moved] = state.items.splice(fromIdx, 1);
+      state.items.splice(toIdx, 0, moved);
+      render();
+    }
+
+    // === Event wiring ===
+    $('#add-form').addEventListener('submit', (e) => {
+      e.preventDefault();
+      add($('#new-task').value);
+    });
+
+    // filter buttons
+    $$(".toolbar .seg button").forEach(btn => {
+      btn.addEventListener('click', () => {
+        $$(".toolbar .seg button").forEach(b => b.setAttribute('aria-pressed', 'false'));
+        btn.setAttribute('aria-pressed', 'true');
+        state.filter = btn.dataset.filter; render();
+      });
+    });
+
+    // search
+    $('#search').addEventListener('input', (e) => {
+      state.search = e.target.value.trim().toLowerCase(); render();
+    });
+
+    // clear completed
+    $('#clear-completed').addEventListener('click', clearCompleted);
+
+    // export / import
+    $('#export-json').addEventListener('click', () => {
+      const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = 'todo-data.json'; a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    });
+
+    $('#import-json').addEventListener('click', () => $('#import-file').click());
+    $('#import-file').addEventListener('change', (e) => {
+      const file = e.target.files?.[0]; if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        try {
+          const data = JSON.parse(reader.result);
+          if (data && Array.isArray(data.items)) {
+            state = { ...state, ...data };
+            render();
+          } else {
+            alert('檔案格式不正確');
+          }
+        } catch {
+          alert('解析失敗，請確認 JSON 檔案');
+        }
+      };
+      reader.readAsText(file);
+      e.target.value = '';
+    });
+
+    // bootstrap
+    load();
+  </script>
 </body>
 </html>
