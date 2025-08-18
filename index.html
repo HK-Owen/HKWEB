@@ -73,7 +73,7 @@
     .icon-btn { border: 1px solid #1e293b; background: #0b1118; color: var(--muted); padding: 6px 8px; border-radius: 10px; cursor: pointer; }
     .icon-btn:hover { color: var(--text); background: #131c29; }
 
-    footer { display: flex; gap: 10px; align-items: center; justify-content: space-between; padding: 12px 22px 20px; color: var(--muted); font-size: 13px; }
+    footer { display: flex; gap: 10px; align-items: center; justify-content: flex-start; padding: 12px 22px 20px; color: var(--muted); font-size: 13px; flex-wrap: wrap; }
     .link { color: var(--brand); text-decoration: none; }
     .link:hover { text-decoration: underline; }
   </style>
@@ -106,12 +106,30 @@
     </div>
 
     <ul id="list" class="list" aria-live="polite"></ul>
-
     <div id="empty" class="empty" hidden>目前沒有待辦事項，快新增一個吧！</div>
 
     <footer>
       <div>本機自動儲存 • 支援拖曳排序、雙擊編輯、鍵盤操作</div>
       <a class="link" href="https://github.com/" target="_blank" rel="noreferrer">在 GitHub Pages 部署</a>
+
+      <!-- 新增前往每日任務抽卡按鈕 -->
+      <a href="https://hk-owen.github.io/card/" target="_blank" style="text-decoration:none;">
+        <button style="
+          margin-left: 10px;
+          padding: 10px 20px; 
+          font-size: 16px; 
+          border: none; 
+          border-radius: 8px; 
+          background: #ff9800; 
+          color: white; 
+          cursor: pointer;
+          transition: background 0.3s;
+        "
+        onmouseover="this.style.background='#e68900';"
+        onmouseout="this.style.background='#ff9800';">
+          前往每日任務抽卡
+        </button>
+      </a>
     </footer>
   </main>
 
@@ -124,8 +142,8 @@
     // === State ===
     const STORE_KEY = 'ghpages.todo.v1';
     let state = {
-      items: [],              // {id, text, done}
-      filter: 'all',          // 'all' | 'active' | 'completed'
+      items: [],
+      filter: 'all',
       search: ''
     };
 
@@ -151,11 +169,8 @@
       });
 
       listEl.innerHTML = '';
-      if (filtered.length === 0) {
-        emptyEl.hidden = false;
-      } else {
-        emptyEl.hidden = true;
-      }
+      if (filtered.length === 0) emptyEl.hidden = false;
+      else emptyEl.hidden = true;
 
       for (const item of filtered) {
         const li = document.createElement('li');
@@ -163,30 +178,20 @@
         li.draggable = true;
         li.dataset.id = item.id;
 
-        // Drag handle
         const handle = document.createElement('span');
-        handle.className = 'handle';
-        handle.title = '拖曳排序';
-        handle.innerHTML = '⋮⋮';
+        handle.className = 'handle'; handle.title = '拖曳排序'; handle.innerHTML = '⋮⋮';
 
-        // Checkbox
         const cb = document.createElement('input');
         cb.type = 'checkbox'; cb.className = 'checkbox'; cb.checked = item.done;
         cb.setAttribute('aria-label', '完成切換');
         cb.addEventListener('change', () => toggleDone(item.id));
 
-        // Label (editable)
         const label = document.createElement('span');
         label.className = 'label'; label.textContent = item.text; label.tabIndex = 0;
         label.addEventListener('dblclick', () => startEdit(label, item));
-        label.addEventListener('keydown', (e) => {
-          if (e.key === 'Enter') { e.preventDefault(); startEdit(label, item); }
-        });
+        label.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); startEdit(label, item); } });
 
-        // Actions
-        const actions = document.createElement('div');
-        actions.className = 'actions';
-
+        const actions = document.createElement('div'); actions.className = 'actions';
         const editBtn = btn('✏️', '編輯', () => startEdit(label, item));
         const delBtn = btn('🗑️', '刪除', () => remove(item.id));
         actions.append(editBtn, delBtn);
@@ -195,13 +200,11 @@
         listEl.append(li);
       }
 
-      // stats
       const total = state.items.length;
       const completed = state.items.filter(i => i.done).length;
       const active = total - completed;
       statsEl.textContent = `全部 ${total} · 進行中 ${active} · 已完成 ${completed}`;
 
-      // enable drag events after DOM built
       enableDrag();
       save();
     }
@@ -224,128 +227,68 @@
         if (!val) { labelEl.textContent = item.text; return; }
         item.text = val; render();
       };
-      const keyHandler = (e) => {
-        if (e.key === 'Enter') { e.preventDefault(); finish(); }
-        if (e.key === 'Escape') { labelEl.textContent = item.text; labelEl.blur(); }
-      }
+      const keyHandler = (e) => { if (e.key==='Enter'){ e.preventDefault(); finish(); } if (e.key==='Escape'){ labelEl.textContent=item.text; labelEl.blur(); }};
       labelEl.addEventListener('blur', finish, { once: true });
       labelEl.addEventListener('keydown', keyHandler, { once: true });
     }
 
     function placeCaretAtEnd(el) {
-      const range = document.createRange();
-      range.selectNodeContents(el);
-      range.collapse(false);
-      const sel = window.getSelection();
-      sel.removeAllRanges();
-      sel.addRange(range);
+      const range = document.createRange(); range.selectNodeContents(el); range.collapse(false);
+      const sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(range);
     }
 
-    function add(text) {
-      const t = text.trim();
-      if (!t) return;
-      state.items.unshift({ id: uid(), text: t, done: false });
-      $('#new-task').value = '';
-      render();
-    }
+    function add(text) { const t=text.trim(); if(!t) return; state.items.unshift({id:uid(), text:t, done:false}); $('#new-task').value=''; render(); }
+    function toggleDone(id) { const it=state.items.find(i=>i.id===id); if(it){it.done=!it.done; render();} }
+    function remove(id) { state.items=state.items.filter(i=>i.id!==id); render(); }
+    function clearCompleted() { state.items=state.items.filter(i=>!i.done); render(); }
 
-    function toggleDone(id) {
-      const it = state.items.find(i => i.id === id);
-      if (it) { it.done = !it.done; render(); }
-    }
-
-    function remove(id) {
-      state.items = state.items.filter(i => i.id !== id);
-      render();
-    }
-
-    function clearCompleted() {
-      state.items = state.items.filter(i => !i.done);
-      render();
-    }
-
-    // drag & drop ordering
     function enableDrag() {
       $$(".item", listEl).forEach(li => {
-        li.addEventListener('dragstart', (e) => {
-          e.dataTransfer.effectAllowed = 'move';
-          e.dataTransfer.setData('text/plain', li.dataset.id);
-          li.style.opacity = .5;
-        });
-        li.addEventListener('dragend', () => li.style.opacity = '');
-        li.addEventListener('dragover', (e) => e.preventDefault());
-        li.addEventListener('drop', (e) => {
+        li.addEventListener('dragstart', e => { e.dataTransfer.effectAllowed='move'; e.dataTransfer.setData('text/plain', li.dataset.id); li.style.opacity=.5; });
+        li.addEventListener('dragend', () => li.style.opacity='');
+        li.addEventListener('dragover', e=>e.preventDefault());
+        li.addEventListener('drop', e=>{
           e.preventDefault();
           const draggedId = e.dataTransfer.getData('text/plain');
           const targetId = li.dataset.id;
-          if (draggedId && draggedId !== targetId) reorder(draggedId, targetId);
+          if(draggedId && draggedId!==targetId) reorder(draggedId,targetId);
         });
       });
     }
-
     function reorder(fromId, toId) {
-      const fromIdx = state.items.findIndex(i => i.id === fromId);
-      const toIdx = state.items.findIndex(i => i.id === toId);
-      if (fromIdx < 0 || toIdx < 0) return;
-      const [moved] = state.items.splice(fromIdx, 1);
-      state.items.splice(toIdx, 0, moved);
+      const fromIdx=state.items.findIndex(i=>i.id===fromId);
+      const toIdx=state.items.findIndex(i=>i.id===toId);
+      if(fromIdx<0||toIdx<0) return;
+      const [moved]=state.items.splice(fromIdx,1);
+      state.items.splice(toIdx,0,moved);
       render();
     }
 
-    // === Event wiring ===
-    $('#add-form').addEventListener('submit', (e) => {
-      e.preventDefault();
-      add($('#new-task').value);
-    });
-
-    // filter buttons
-    $$(".toolbar .seg button").forEach(btn => {
-      btn.addEventListener('click', () => {
-        $$(".toolbar .seg button").forEach(b => b.setAttribute('aria-pressed', 'false'));
-        btn.setAttribute('aria-pressed', 'true');
-        state.filter = btn.dataset.filter; render();
-      });
-    });
-
-    // search
-    $('#search').addEventListener('input', (e) => {
-      state.search = e.target.value.trim().toLowerCase(); render();
-    });
-
-    // clear completed
+    $('#add-form').addEventListener('submit', e=>{ e.preventDefault(); add($('#new-task').value); });
+    $$(".toolbar .seg button").forEach(btn=>{ btn.addEventListener('click',()=>{ $$(".toolbar .seg button").forEach(b=>b.setAttribute('aria-pressed','false')); btn.setAttribute('aria-pressed','true'); state.filter=btn.dataset.filter; render(); }); });
+    $('#search').addEventListener('input', e=>{ state.search=e.target.value.trim().toLowerCase(); render(); });
     $('#clear-completed').addEventListener('click', clearCompleted);
-
-    // export / import
-    $('#export-json').addEventListener('click', () => {
-      const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url; a.download = 'todo-data.json'; a.click();
-      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    $('#export-json').addEventListener('click', ()=>{
+      const blob = new Blob([JSON.stringify(state,null,2)],{type:'application/json'});
+      const url=URL.createObjectURL(blob);
+      const a=document.createElement('a'); a.href=url; a.download='todo-data.json'; a.click();
+      setTimeout(()=>URL.revokeObjectURL(url),1000);
     });
-
-    $('#import-json').addEventListener('click', () => $('#import-file').click());
-    $('#import-file').addEventListener('change', (e) => {
-      const file = e.target.files?.[0]; if (!file) return;
-      const reader = new FileReader();
-      reader.onload = () => {
-        try {
-          const data = JSON.parse(reader.result);
-          if (data && Array.isArray(data.items)) {
-            state = { ...state, ...data };
-            render();
-          } else {
-            alert('檔案格式不正確');
-          }
-        } catch {
-          alert('解析失敗，請確認 JSON 檔案');
-        }
+    $('#import-json').addEventListener('click',()=>$('#import-file').click());
+    $('#import-file').addEventListener('change', e=>{
+      const file=e.target.files?.[0]; if(!file) return;
+      const reader=new FileReader();
+      reader.onload=()=>{
+        try{
+          const data=JSON.parse(reader.result);
+          if(data && Array.isArray(data.items)){ state={...state,...data}; render(); }
+          else alert('檔案格式不正確');
+        }catch{ alert('解析失敗，請確認 JSON 檔案'); }
       };
       reader.readAsText(file);
-      e.target.value = '';
+      e.target.value='';
     });
 
-    // bootstrap
     load();
   </script>
 </body>
